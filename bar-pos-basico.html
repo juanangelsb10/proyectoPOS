@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NOIR POS</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --black: #0a0a0a; --black2: #121212; --black3: #1a1a1a; --black4: #222222;
+    --gold: #d4af37; --gold-soft: #c9a86a; --gold-dim: rgba(212,175,55,.15); --gold-border: rgba(212,175,55,.25);
+    --text: #f5f5f0; --text-dim: #8a8a85; --text-faint: #555550;
+    --green: #4caf50; --red: #e74c3c; --border: #2a2a2a;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Inter', -apple-system, sans-serif; background: var(--black); color: var(--text); min-height: 100vh; letter-spacing: .2px; }
+
+  header {
+    background: linear-gradient(180deg, var(--black2), var(--black));
+    padding: 18px 28px; display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid var(--gold-border); flex-wrap: wrap; gap: 10px;
+    position: sticky; top: 0; z-index: 50;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .brand-mark { width: 34px; height: 34px; border-radius: 9px; background: linear-gradient(135deg, var(--gold), #8a6d1f); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 16px; color: #000; }
+  header h1 { font-size: 19px; font-weight: 700; letter-spacing: 1.5px; }
+  header h1 span { color: var(--gold); font-weight: 800; }
+  header .sub { font-size: 11px; color: var(--text-dim); letter-spacing: 2px; text-transform: uppercase; margin-top: 2px; }
+  .header-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .fecha { font-size: 12px; color: var(--text-dim); }
+
+  .caja-status { display: flex; align-items: center; gap: 8px; padding: 7px 16px; border-radius: 999px; font-size: 11px; font-weight: 600; letter-spacing: .5px; text-transform: uppercase; border: 1px solid; }
+  .caja-status.abierta { background: rgba(76,175,80,.08); border-color: rgba(76,175,80,.3); color: var(--green); }
+  .caja-status.cerrada { background: rgba(231,76,60,.08); border-color: rgba(231,76,60,.3); color: var(--red); }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+
+  .nav-tabs { display: flex; gap: 4px; padding: 10px 28px 0; background: var(--black); border-bottom: 1px solid var(--border); overflow-x: auto; }
+  .nav-tab { padding: 10px 18px; font-size: 12px; font-weight: 600; letter-spacing: .8px; text-transform: uppercase; color: var(--text-dim); background: transparent; border: none; cursor: pointer; border-bottom: 2px solid transparent; transition: all .2s; white-space: nowrap; }
+  .nav-tab:hover { color: var(--text); }
+  .nav-tab.active { color: var(--gold); border-bottom-color: var(--gold); }
+
+  .container { display: flex; gap: 20px; padding: 24px 28px; max-width: 1200px; margin: 0 auto; align-items: flex-start; }
+  .view { display: none; width: 100%; }
+  .view.active:not(.single) { display: flex; gap: 20px; align-items: flex-start; flex: 1; }
+  .view.single.active { display: block; }
+
+  .productos { flex: 1; min-width: 0; }
+  .section-title { font-size: 12px; text-transform: uppercase; color: var(--text-dim); margin-bottom: 14px; letter-spacing: 2px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+  .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  .categorias { display: flex; gap: 8px; margin-bottom: 18px; flex-wrap: wrap; }
+  .cat-btn { padding: 8px 18px; border-radius: 999px; border: 1px solid var(--border); background: var(--black2); color: var(--text-dim); cursor: pointer; font-size: 12px; font-weight: 500; transition: all .2s; }
+  .cat-btn:hover { border-color: var(--gold-border); color: var(--text); }
+  .cat-btn.active { background: var(--gold); border-color: var(--gold); color: #000; font-weight: 700; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+  .prod-card { background: linear-gradient(160deg, var(--black3), var(--black2)); border: 1px solid var(--border); border-radius: 14px; padding: 18px 12px; text-align: center; cursor: pointer; transition: all .2s; position: relative; }
+  .prod-card:hover { border-color: var(--gold-border); transform: translateY(-3px); box-shadow: 0 8px 24px rgba(212,175,55,.08); }
+  .prod-card:active { transform: scale(.96); }
+  .prod-card.agotado { opacity: .35; pointer-events: none; }
+  .prod-card.bloqueado { opacity: .3; pointer-events: none; border-style: dashed; }
+  .prod-emoji { font-size: 34px; margin-bottom: 8px; }
+  .prod-nombre { font-size: 12px; font-weight: 600; margin-bottom: 6px; color: var(--text); }
+  .prod-precio { font-size: 16px; font-weight: 700; color: var(--gold); }
+  .prod-stock { font-size: 10px; color: var(--text-faint); margin-top: 4px; letter-spacing: .5px; }
+  .prod-stock.bajo { color: var(--red); }
+  .in-cart-badge { position: absolute; top: 8px; right: 8px; background: var(--gold); color: #000; font-size: 10px; font-weight: 800; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+
+  .caja-cerrada-msg { text-align: center; padding: 50px 24px; background: var(--black2); border: 1px dashed var(--border); border-radius: 16px; color: var(--text-dim); font-size: 13px; margin-bottom: 18px; }
+  .caja-cerrada-msg strong { color: var(--gold); display: block; margin-bottom: 10px; font-size: 16px; font-weight: 700; }
+
+  .carrito { width: 320px; flex-shrink: 0; background: linear-gradient(160deg, var(--black3), var(--black2)); border-radius: 16px; border: 1px solid var(--border); display: flex; flex-direction: column; height: fit-content; position: sticky; top: 100px; overflow: hidden; }
+  .carrito-header { padding: 18px 20px; border-bottom: 1px solid var(--border); font-size: 13px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; display: flex; justify-content: space-between; align-items: center; }
+  .carrito-header span:last-child { color: var(--text-dim); font-weight: 500; font-size: 11px; text-transform: none; letter-spacing: 0; }
+  .carrito-items { padding: 6px 20px; min-height: 100px; max-height: 320px; overflow-y: auto; }
+  .carrito-item { display: flex; align-items: center; gap: 8px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .carrito-item:last-child { border-bottom: none; }
+  .ci-info { flex: 1; min-width: 0; }
+  .ci-nombre { font-size: 12px; font-weight: 600; }
+  .ci-precio { font-size: 10px; color: var(--text-dim); margin-top: 2px; }
+  .ci-ctrl { display: flex; align-items: center; gap: 6px; }
+  .ci-btn { width: 24px; height: 24px; border-radius: 7px; border: 1px solid var(--border); background: var(--black); color: var(--text); cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; transition: all .2s; }
+  .ci-btn:hover { border-color: var(--gold); color: var(--gold); }
+  .ci-qty { font-size: 13px; font-weight: 700; min-width: 18px; text-align: center; }
+  .ci-total { font-size: 12px; font-weight: 700; color: var(--gold); min-width: 58px; text-align: right; }
+  .carrito-empty { text-align: center; padding: 36px 0; color: var(--text-faint); font-size: 12px; }
+
+  .carrito-footer { padding: 18px 20px; border-top: 1px solid var(--border); }
+  .total-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 14px; }
+  .total-lbl { font-size: 11px; text-transform: uppercase; color: var(--text-dim); letter-spacing: 1.5px; font-weight: 600; }
+  .total-amt { font-size: 28px; font-weight: 800; color: var(--gold); }
+
+  .btn-cobrar { width: 100%; padding: 14px; border-radius: 10px; background: linear-gradient(135deg, var(--gold), #b8923a); border: none; color: #000; font-size: 14px; font-weight: 800; cursor: pointer; letter-spacing: .5px; transition: all .2s; }
+  .btn-cobrar:hover { filter: brightness(1.1); }
+  .btn-cobrar:disabled { background: var(--black4); color: var(--text-faint); cursor: default; }
+  .btn-limpiar { width: 100%; padding: 10px; border-radius: 10px; background: transparent; border: 1px solid var(--border); color: var(--text-dim); font-size: 11px; cursor: pointer; margin-top: 8px; text-transform: uppercase; letter-spacing: 1px; transition: all .2s; }
+  .btn-limpiar:hover { border-color: var(--red); color: var(--red); }
+
+  .btn-caja { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid; font-size: 12px; font-weight: 700; cursor: pointer; margin-top: 10px; text-transform: uppercase; letter-spacing: 1px; transition: all .2s; }
+  .btn-caja.abrir { background: rgba(76,175,80,.06); color: var(--green); border-color: rgba(76,175,80,.3); }
+  .btn-caja.abrir:hover { background: rgba(76,175,80,.12); }
+  .btn-caja.cerrar { background: rgba(231,76,60,.06); color: var(--red); border-color: rgba(231,76,60,.3); }
+  .btn-caja.cerrar:hover { background: rgba(231,76,60,.12); }
+
+  .historial-toggle { display: block; margin: 16px auto 0; padding: 9px 22px; background: transparent; border: 1px solid var(--border); border-radius: 999px; color: var(--text-dim); font-size: 11px; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; transition: all .2s; }
+  .historial-toggle:hover { border-color: var(--gold-border); color: var(--gold); }
+  .historial { margin-top: 18px; background: var(--black2); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+  .historial h3 { padding: 14px 20px; font-size: 12px; text-transform: uppercase; color: var(--text-dim); border-bottom: 1px solid var(--border); letter-spacing: 1.5px; font-weight: 700; }
+  .historial-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; border-bottom: 1px solid var(--border); font-size: 12px; }
+  .historial-item:last-child { border-bottom: none; }
+  .h-hora { color: var(--text-faint); }
+  .h-items { color: var(--text-dim); flex: 1; margin: 0 12px; }
+  .h-metodo { color: var(--text-dim); font-size: 10px; padding: 2px 8px; border: 1px solid var(--border); border-radius: 999px; }
+  .h-total { font-weight: 700; color: var(--gold); }
+
+  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
+  .stat-card { background: linear-gradient(160deg, var(--black3), var(--black2)); border: 1px solid var(--border); border-radius: 14px; padding: 20px; position: relative; overflow: hidden; }
+  .stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, var(--gold), transparent); }
+  .stat-label { font-size: 11px; text-transform: uppercase; color: var(--text-dim); letter-spacing: 1.5px; margin-bottom: 8px; font-weight: 600; }
+  .stat-value { font-size: 26px; font-weight: 800; color: var(--gold); }
+  .stat-value.alt { color: var(--text); }
+  .stat-sub { font-size: 11px; color: var(--text-faint); margin-top: 4px; }
+
+  .analytics-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 18px; }
+  @media (max-width: 900px) { .analytics-grid { grid-template-columns: 1fr; } .stats-grid { grid-template-columns: repeat(2, 1fr); } }
+
+  .panel { background: linear-gradient(160deg, var(--black3), var(--black2)); border: 1px solid var(--border); border-radius: 16px; padding: 22px; }
+  .panel h3 { font-size: 13px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-dim); margin-bottom: 18px; font-weight: 700; }
+
+  .bar-row { margin-bottom: 14px; }
+  .bar-row-label { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 6px; }
+  .bar-row-label span:first-child { color: var(--text); font-weight: 600; }
+  .bar-row-label span:last-child { color: var(--gold); font-weight: 700; }
+  .bar-track { height: 6px; background: var(--black4); border-radius: 999px; overflow: hidden; }
+  .bar-fill { height: 100%; background: linear-gradient(90deg, var(--gold-soft), var(--gold)); border-radius: 999px; transition: width .4s ease; }
+
+  .empty-state { text-align: center; padding: 40px 0; color: var(--text-faint); font-size: 12px; }
+
+  .metodo-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 12px; }
+  .metodo-row:last-child { border-bottom: none; }
+  .metodo-row .left { display: flex; align-items: center; gap: 10px; }
+  .metodo-ico-sm { font-size: 16px; }
+
+  .inv-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; gap: 12px; flex-wrap: wrap; }
+  .btn-gold { padding: 10px 20px; border-radius: 10px; background: linear-gradient(135deg, var(--gold), #b8923a); border: none; color: #000; font-size: 12px; font-weight: 800; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; transition: all .2s; }
+  .btn-gold:hover { filter: brightness(1.1); }
+
+  .inv-table { width: 100%; border-collapse: collapse; background: var(--black2); border-radius: 14px; overflow: hidden; border: 1px solid var(--border); }
+  .inv-table th { text-align: left; padding: 14px 16px; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-dim); border-bottom: 1px solid var(--border); font-weight: 600; background: var(--black3); }
+  .inv-table td { padding: 14px 16px; font-size: 13px; border-bottom: 1px solid var(--border); }
+  .inv-table tr:last-child td { border-bottom: none; }
+  .inv-table tr:hover td { background: rgba(212,175,55,.03); }
+  .inv-emoji-name { display: flex; align-items: center; gap: 10px; }
+  .inv-emoji-name .em { font-size: 22px; }
+  .inv-emoji-name .nm { font-weight: 600; }
+  .inv-emoji-name .cat { font-size: 10px; color: var(--text-faint); margin-top: 2px; }
+
+  .stock-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 999px; font-size: 11px; font-weight: 700; border: 1px solid; }
+  .stock-pill.ok { color: var(--green); border-color: rgba(76,175,80,.3); background: rgba(76,175,80,.06); }
+  .stock-pill.bajo { color: #e8b339; border-color: rgba(232,179,57,.3); background: rgba(232,179,57,.06); }
+  .stock-pill.agotado { color: var(--red); border-color: rgba(231,76,60,.3); background: rgba(231,76,60,.06); }
+
+  .stock-edit input { width: 64px; padding: 6px 8px; background: var(--black); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 12px; text-align: center; outline: none; }
+  .stock-edit input:focus { border-color: var(--gold); }
+  .icon-btn { width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--border); background: var(--black); color: var(--text-dim); cursor: pointer; font-size: 13px; display: flex; align-items: center; justify-content: center; transition: all .2s; }
+  .icon-btn:hover { border-color: var(--gold-border); color: var(--gold); }
+  .icon-btn.danger:hover { border-color: rgba(231,76,60,.4); color: var(--red); }
+
+  .modal-ov { position: fixed; inset: 0; background: rgba(0,0,0,.85); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 20px; backdrop-filter: blur(4px); }
+  .modal { background: linear-gradient(160deg, var(--black3), var(--black2)); border: 1px solid var(--gold-border); border-radius: 18px; padding: 28px; width: 100%; max-width: 380px; max-height: 90vh; overflow-y: auto; box-shadow: 0 24px 60px rgba(0,0,0,.6); }
+  .modal h3 { font-size: 19px; font-weight: 700; margin-bottom: 6px; }
+  .modal .subtotal { font-size: 13px; color: var(--text-dim); margin-bottom: 22px; }
+
+  .metodos { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 18px; }
+  .metodo-btn { padding: 14px; border-radius: 12px; border: 1px solid var(--border); background: var(--black); color: var(--text); cursor: pointer; font-size: 12px; font-weight: 600; text-align: center; transition: all .2s; }
+  .metodo-btn:hover, .metodo-btn.sel { border-color: var(--gold); background: var(--gold-dim); color: var(--gold); }
+  .metodo-ico { font-size: 22px; display: block; margin-bottom: 6px; }
+
+  .efectivo-box, .ref-box, .form-field { margin-bottom: 16px; }
+  .efectivo-box label, .ref-box label, .form-field label { font-size: 11px; text-transform: uppercase; color: var(--text-dim); letter-spacing: 1.5px; display: block; margin-bottom: 8px; font-weight: 600; }
+  .efectivo-box input, .ref-box input, .form-field input, .form-field select { width: 100%; padding: 12px 14px; background: var(--black); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-size: 14px; outline: none; transition: all .2s; font-family: 'Inter', sans-serif; }
+  .efectivo-box input { font-size: 18px; font-weight: 700; }
+  .efectivo-box input:focus, .ref-box input:focus, .form-field input:focus, .form-field select:focus { border-color: var(--gold); }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  .vuelto-box { background: rgba(76,175,80,.06); border: 1px solid rgba(76,175,80,.25); border-radius: 12px; padding: 12px 16px; margin-bottom: 18px; }
+  .vuelto-lbl { font-size: 10px; text-transform: uppercase; color: var(--green); letter-spacing: 1.5px; margin-bottom: 3px; font-weight: 700; }
+  .vuelto-amt { font-size: 24px; font-weight: 800; color: var(--green); }
+  .error-box { background: rgba(231,76,60,.06); border: 1px solid rgba(231,76,60,.25); border-radius: 12px; padding: 12px 16px; margin-bottom: 18px; font-size: 12px; color: var(--red); }
+
+  .modal-btns { display: flex; gap: 10px; }
+  .btn-confirmar { flex: 1; padding: 14px; background: linear-gradient(135deg, var(--gold), #b8923a); border: none; border-radius: 10px; color: #000; font-size: 13px; font-weight: 800; cursor: pointer; text-transform: uppercase; letter-spacing: .5px; transition: all .2s; }
+  .btn-confirmar:hover { filter: brightness(1.1); }
+  .btn-confirmar:disabled { background: var(--black4); color: var(--text-faint); cursor: default; }
+  .btn-cancelar { padding: 14px 18px; background: transparent; border: 1px solid var(--border); border-radius: 10px; color: var(--text-dim); font-size: 12px; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; transition: all .2s; }
+  .btn-cancelar:hover { border-color: var(--border); color: var(--text); }
+
+  .venta-ok { text-align: center; padding: 24px 0; }
+  .venta-ok .check { font-size: 60px; margin-bottom: 14px; color: var(--gold); }
+  .venta-ok h3 { font-size: 22px; margin-bottom: 8px; color: var(--gold); }
+  .venta-ok p { font-size: 13px; color: var(--text-dim); margin-bottom: 22px; }
+
+  .resumen-caja { background: var(--black); border-radius: 12px; padding: 16px 18px; margin-bottom: 18px; border: 1px solid var(--border); }
+  .resumen-row { display: flex; justify-content: space-between; font-size: 12px; padding: 6px 0; color: var(--text-dim); }
+  .resumen-row.total { border-top: 1px solid var(--border); margin-top: 8px; padding-top: 12px; font-weight: 800; font-size: 15px; color: var(--gold); }
+
+  @media (max-width: 800px) {
+    .container { flex-direction: column; padding: 16px; }
+    .view.active { flex-direction: column; }
+    .carrito { width: 100%; position: static; }
+    .grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    header { padding: 14px 16px; }
+    .nav-tabs { padding: 8px 16px 0; }
+    .form-row { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="brand">
+      <div class="brand-mark">N</div>
+      <h1>NOIR <span>POS</span></h1>
+    </div>
+    <div class="sub">Bar &amp; Snacks · Edición Black Gold</div>
+  </div>
+  <div class="header-right">
+    <span class="fecha" id="fecha"></span>
+    <div class="caja-status cerrada" id="caja-badge">
+      <span class="dot"></span><span id="caja-badge-text">Caja cerrada</span>
+    </div>
+  </div>
+</header>
+
+<nav class="nav-tabs">
+  <button class="nav-tab active" onclick="cambiarVista('venta')" id="tab-venta">Punto de venta</button>
+  <button class="nav-tab" onclick="cambiarVista('analytics')" id="tab-analytics">Análisis de ventas</button>
+  <button class="nav-tab" onclick="cambiarVista('inventario')" id="tab-inventario">Inventario</button>
+</nav>
+
+<div class="container">
+
+  <div class="view active" id="view-venta">
+    <div class="productos">
+      <div class="section-title">Catálogo</div>
+      <div class="categorias" id="categorias"></div>
+
+      <div id="caja-cerrada-msg" class="caja-cerrada-msg">
+        <strong>La caja está cerrada</strong>
+        Abre la caja desde el panel derecho para empezar a vender.
+      </div>
+
+      <div class="grid" id="grid-productos"></div>
+
+      <button class="historial-toggle" onclick="toggleHistorial()">Historial de ventas de hoy</button>
+      <div class="historial" id="historial" style="display:none">
+        <h3>Historial</h3>
+        <div id="historial-items"></div>
+      </div>
+    </div>
+
+    <div class="carrito">
+      <div class="carrito-header">
+        <span>Pedido</span>
+        <span id="carrito-count">0 items</span>
+      </div>
+      <div class="carrito-items" id="carrito-items">
+        <div class="carrito-empty">El carrito está vacío</div>
+      </div>
+      <div class="carrito-footer">
+        <div class="total-row">
+          <span class="total-lbl">Total</span>
+          <span class="total-amt" id="total">$0</span>
+        </div>
+        <button class="btn-cobrar" id="btn-cobrar" onclick="abrirCobro()" disabled>Cobrar</button>
+        <button class="btn-limpiar" onclick="limpiarCarrito()">Limpiar carrito</button>
+        <button class="btn-caja abrir" id="btn-abrir-caja" onclick="abrirCajaModal()">Abrir caja</button>
+        <button class="btn-caja cerrar" id="btn-cerrar-caja" onclick="cerrarCajaModal()" style="display:none">Cerrar caja</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="view single" id="view-analytics">
+    <div class="section-title">Análisis de ventas de hoy</div>
+    <div class="stats-grid" id="stats-grid"></div>
+    <div class="analytics-grid">
+      <div class="panel">
+        <h3>Productos más vendidos hoy</h3>
+        <div id="top-productos"></div>
+      </div>
+      <div class="panel">
+        <h3>Ventas por método de pago</h3>
+        <div id="ventas-metodo"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="view single" id="view-inventario">
+    <div class="inv-toolbar">
+      <div class="section-title" style="margin-bottom:0;flex:1">Gestión de inventario</div>
+      <button class="btn-gold" onclick="abrirNuevoProducto()">+ Nuevo producto</button>
+    </div>
+    <table class="inv-table">
+      <thead>
+        <tr>
+          <th>Producto</th>
+          <th>Precio</th>
+          <th>Stock</th>
+          <th>Estado</th>
+          <th style="text-align:right">Acciones</th>
+        </tr>
+      </thead>
+      <tbody id="inv-tbody"></tbody>
+    </table>
+  </div>
+
+</div>
+
+<div class="modal-ov" id="modal" style="display:none" onclick="if(event.target===this)cerrarModal()">
+  <div class="modal" id="modal-content"></div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════
+   NOIR POS — Sistema de punto de venta
+   Patrones de comportamiento (GoF) aplicados:
+     1) STRATEGY  -> Métodos de pago intercambiables
+     2) STATE     -> Estado de la caja (Abierta / Cerrada)
+     3) OBSERVER  -> Carrito notifica cambios a la UI
+   Referencia: https://refactoring.guru/es/design-patterns
+═══════════════════════════════════════════════════════════ */
+
+/* 1) STRATEGY — Métodos de pago */
+class PaymentStrategy {
+  nombre()        { throw new Error('nombre() no implementado') }
+  icono()         { throw new Error('icono() no implementado') }
+  requiereInput() { return false }
+  validar(total, datos) { return { ok: true } }
+  procesar(total, datos) { return { metodo: this.nombre(), vuelto: 0, referencia: null } }
+}
+class EfectivoStrategy extends PaymentStrategy {
+  nombre()        { return 'Efectivo' }
+  icono()         { return '💵' }
+  requiereInput() { return true }
+  validar(total, datos) {
+    const recibido = Number(datos.recibido) || 0
+    if (recibido < total) return { ok: false, error: 'El monto recibido es menor al total' }
+    return { ok: true }
+  }
+  procesar(total, datos) {
+    const recibido = Number(datos.recibido) || 0
+    return { metodo: this.nombre(), vuelto: recibido - total, referencia: null }
+  }
+}
+class NequiStrategy extends PaymentStrategy {
+  nombre() { return 'Nequi' }
+  icono()  { return '📱' }
+  procesar(total) { return { metodo: this.nombre(), vuelto: 0, referencia: null } }
+}
+class DaviplataStrategy extends PaymentStrategy {
+  nombre() { return 'Daviplata' }
+  icono()  { return '📲' }
+  procesar(total) { return { metodo: this.nombre(), vuelto: 0, referencia: null } }
+}
+class TarjetaStrategy extends PaymentStrategy {
+  nombre()        { return 'Tarjeta' }
+  icono()         { return '💳' }
+  procesar(total) { return { metodo: this.nombre(), vuelto: 0, referencia: null } }
+}
+const PAYMENT_STRATEGIES = {
+  Efectivo:  new EfectivoStrategy(),
+  Nequi:     new NequiStrategy(),
+  Daviplata: new DaviplataStrategy(),
+  Tarjeta:   new TarjetaStrategy(),
+}
+
+/* 2) OBSERVER — Carrito observable */
+class CartManager {
+  constructor() { this.items = []; this.observers = [] }
+  subscribe(fn) { this.observers.push(fn) }
+  notify() { this.observers.forEach(fn => fn(this.items)) }
+  agregar(producto) {
+    const ex = this.items.find(i => i.id === producto.id)
+    if (ex) {
+      if (ex.qty >= producto.stockDisponible) return
+      ex.qty++
+    } else {
+      this.items.push({ id: producto.id, nombre: producto.nombre, emoji: producto.emoji, precio: producto.precio, qty: 1 })
+    }
+    this.notify()
+  }
+  cambiarQty(id, delta) {
+    const item = this.items.find(i => i.id === id)
+    if (!item) return
+    item.qty += delta
+    if (item.qty <= 0) this.items = this.items.filter(i => i.id !== id)
+    this.notify()
+  }
+  limpiar() { this.items = []; this.notify() }
+  total() { return this.items.reduce((s, i) => s + i.precio * i.qty, 0) }
+  count() { return this.items.reduce((s, i) => s + i.qty, 0) }
+}
+
+/* 3) STATE — Estados de la caja */
+class EstadoCaja {
+  constructor(contexto) { this.contexto = contexto }
+  abrir(montoBase) {}
+  cerrar() {}
+  puedeVender() { return false }
+  etiqueta() { return 'Desconocido' }
+}
+class CajaCerrada extends EstadoCaja {
+  abrir(montoBase) {
+    this.contexto.montoBase = montoBase
+    this.contexto.ventasPorMetodo = { Efectivo: 0, Nequi: 0, Daviplata: 0, Tarjeta: 0 }
+    this.contexto.horaApertura = new Date()
+    this.contexto.setEstado(new CajaAbierta(this.contexto))
+  }
+  cerrar() {}
+  puedeVender() { return false }
+  etiqueta() { return 'Caja cerrada' }
+}
+class CajaAbierta extends EstadoCaja {
+  abrir(montoBase) {}
+  cerrar() { this.contexto.setEstado(new CajaCerrada(this.contexto)) }
+  registrarVenta(metodo, monto) {
+    this.contexto.ventasPorMetodo[metodo] = (this.contexto.ventasPorMetodo[metodo] || 0) + monto
+  }
+  puedeVender() { return true }
+  etiqueta() { return 'Caja abierta' }
+}
+class CajaContext {
+  constructor() {
+    this.montoBase = 0
+    this.ventasPorMetodo = {}
+    this.horaApertura = null
+    this.estado = new CajaCerrada(this)
+  }
+  setEstado(nuevoEstado) { this.estado = nuevoEstado; onCajaStateChange() }
+  abrir(montoBase) { this.estado.abrir(montoBase) }
+  cerrar() { this.estado.cerrar() }
+  puedeVender() { return this.estado.puedeVender() }
+  etiqueta() { return this.estado.etiqueta() }
+  registrarVenta(metodo, monto) {
+    if (this.estado instanceof CajaAbierta) this.estado.registrarVenta(metodo, monto)
+  }
+  totalVentas() { return Object.values(this.ventasPorMetodo).reduce((a, b) => a + b, 0) }
+}
+
+/* CATÁLOGO INICIAL */
+let nextId = 18
+let stockActual = [
+  { id:1, nombre:'Poker 330ml',     emoji:'🍺', categoria:'Cervezas', precio:3500,  stock:50, costo:2200 },
+  { id:2, nombre:'Águila 330ml',    emoji:'🍺', categoria:'Cervezas', precio:3500,  stock:50, costo:2200 },
+  { id:3, nombre:'Costeña 330ml',   emoji:'🍺', categoria:'Cervezas', precio:3000,  stock:40, costo:1900 },
+  { id:4, nombre:'Club Colombia',   emoji:'🍺', categoria:'Cervezas', precio:4500,  stock:30, costo:2900 },
+  { id:5, nombre:'Poker litro',     emoji:'🍻', categoria:'Cervezas', precio:7000,  stock:20, costo:4500 },
+  { id:6, nombre:'Aguardiente Néctar', emoji:'🥃', categoria:'Licores', precio:45000, stock:10, costo:32000 },
+  { id:7, nombre:'Ron Medellín',       emoji:'🥃', categoria:'Licores', precio:38000, stock:8,  costo:27000 },
+  { id:8, nombre:'Shot Aguardiente',   emoji:'🥃', categoria:'Licores', precio:3000,  stock:99, costo:1800 },
+  { id:9,  nombre:'Gaseosa 400ml',  emoji:'🥤', categoria:'Bebidas', precio:3000, stock:30, costo:1500 },
+  { id:10, nombre:'Agua 600ml',     emoji:'💧', categoria:'Bebidas', precio:2000, stock:40, costo:900 },
+  { id:11, nombre:'Jugo Hit',       emoji:'🍹', categoria:'Bebidas', precio:3500, stock:20, costo:1700 },
+  { id:12, nombre:'Red Bull',       emoji:'⚡', categoria:'Bebidas', precio:8000, stock:12, costo:5500 },
+  { id:13, nombre:'Papas Margarita', emoji:'🍟', categoria:'Snacks', precio:3500, stock:25, costo:2100 },
+  { id:14, nombre:'Maní',            emoji:'🥜', categoria:'Snacks', precio:2000, stock:30, costo:1100 },
+  { id:15, nombre:'Chitos',          emoji:'🧡', categoria:'Snacks', precio:2500, stock:20, costo:1400 },
+  { id:16, nombre:'Nucítas',         emoji:'🍫', categoria:'Snacks', precio:3000, stock:15, costo:1700 },
+  { id:17, nombre:'Doritos',         emoji:'🌽', categoria:'Snacks', precio:3500, stock:18, costo:2100 },
+]
+
+let catActiva   = 'Todas'
+let historial   = []
+let vistaActual = 'venta'
+
+const cart = new CartManager()
+const caja = new CajaContext()
+cart.subscribe(() => { renderCarrito(); renderProductos() })
+
+function cambiarVista(v) {
+  vistaActual = v
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'))
+  document.getElementById('tab-' + v).classList.add('active')
+  document.querySelectorAll('.view').forEach(el => el.classList.remove('active'))
+  document.getElementById('view-' + v).classList.add('active')
+  if (v === 'analytics') renderAnalytics()
+  if (v === 'inventario') renderInventario()
+}
+
+document.getElementById('fecha').textContent = new Date().toLocaleDateString('es-CO', { weekday:'long', day:'2-digit', month:'long' })
+
+function init() {
+  renderCategorias()
+  renderProductos()
+  renderCarrito()
+  onCajaStateChange()
+}
+
+function renderCategorias() {
+  const cats = ['Todas', ...new Set(stockActual.map(p => p.categoria))]
+  document.getElementById('categorias').innerHTML = cats.map(c => `
+    <button class="cat-btn ${c === catActiva ? 'active' : ''}" onclick="filtrar('${c}')">${c}</button>
+  `).join('')
+}
+function filtrar(cat) { catActiva = cat; renderCategorias(); renderProductos() }
+
+function renderProductos() {
+  let cats = ['Todas', ...new Set(stockActual.map(p => p.categoria))]
+  if (!cats.includes(catActiva)) catActiva = 'Todas'
+
+  const lista = catActiva === 'Todas' ? stockActual : stockActual.filter(p => p.categoria === catActiva)
+  const el = document.getElementById('grid-productos')
+  const bloqueado = !caja.puedeVender()
+
+  el.innerHTML = lista.map(p => {
+    const enCarrito = cart.items.find(i => i.id === p.id)
+    const stockBajo = p.stock > 0 && p.stock <= 5
+    return `
+    <div class="prod-card ${p.stock <= 0 ? 'agotado' : ''} ${bloqueado ? 'bloqueado' : ''}" onclick="agregar(${p.id})">
+      ${enCarrito ? `<div class="in-cart-badge">${enCarrito.qty}</div>` : ''}
+      <div class="prod-emoji">${p.emoji}</div>
+      <div class="prod-nombre">${p.nombre}</div>
+      <div class="prod-precio">${fmtPrecio(p.precio)}</div>
+      <div class="prod-stock ${stockBajo ? 'bajo' : ''}">${p.stock <= 0 ? 'Agotado' : 'Stock ' + p.stock}</div>
+    </div>
+  `}).join('')
+
+  if (vistaActual === 'inventario') renderInventario()
+}
+
+function agregar(id) {
+  if (!caja.puedeVender()) return
+  const prod = stockActual.find(p => p.id === id)
+  if (!prod || prod.stock <= 0) return
+  cart.agregar({ id: prod.id, nombre: prod.nombre, emoji: prod.emoji, precio: prod.precio, stockDisponible: prod.stock })
+}
+function cambiarQty(id, delta) { cart.cambiarQty(id, delta) }
+function limpiarCarrito() { cart.limpiar() }
+
+function renderCarrito() {
+  const el    = document.getElementById('carrito-items')
+  const total = cart.total()
+  const count = cart.count()
+
+  document.getElementById('carrito-count').textContent = count + ' item' + (count !== 1 ? 's' : '')
+  document.getElementById('total').textContent = fmtPrecio(total)
+  document.getElementById('btn-cobrar').disabled = cart.items.length === 0 || !caja.puedeVender()
+
+  if (cart.items.length === 0) {
+    el.innerHTML = '<div class="carrito-empty">El carrito está vacío</div>'
+    return
+  }
+  el.innerHTML = cart.items.map(item => `
+    <div class="carrito-item">
+      <div class="ci-info">
+        <div class="ci-nombre">${item.emoji} ${item.nombre}</div>
+        <div class="ci-precio">${fmtPrecio(item.precio)} c/u</div>
+      </div>
+      <div class="ci-ctrl">
+        <button class="ci-btn" onclick="cambiarQty(${item.id}, -1)">−</button>
+        <span class="ci-qty">${item.qty}</span>
+        <button class="ci-btn" onclick="cambiarQty(${item.id}, 1)">+</button>
+      </div>
+      <div class="ci-total">${fmtPrecio(item.precio * item.qty)}</div>
+    </div>
+  `).join('')
+}
+
+let strategySeleccionada = null
+
+function abrirCobro() {
+  if (!caja.puedeVender()) return
+  const total = cart.total()
+  strategySeleccionada = null
+  document.getElementById('modal-content').innerHTML = modalCobroHTML(total)
+  document.getElementById('modal').style.display = 'flex'
+}
+
+function modalCobroHTML(total) {
+  const botones = Object.values(PAYMENT_STRATEGIES).map(s => `
+    <div class="metodo-btn" onclick="selMetodo('${s.nombre()}', ${total})" id="m-${s.nombre()}">
+      <span class="metodo-ico">${s.icono()}</span>${s.nombre()}
+    </div>
+  `).join('')
+  return `
+    <h3>Cobrar</h3>
+    <p class="subtotal">Total a cobrar: <strong style="color:var(--gold)">${fmtPrecio(total)}</strong></p>
+    <p style="font-size:11px;text-transform:uppercase;color:var(--text-dim);letter-spacing:1.5px;margin-bottom:10px;font-weight:600">Método de pago</p>
+    <div class="metodos">${botones}</div>
+    <div id="extra-section"></div>
+    <div id="error-section"></div>
+    <div class="modal-btns">
+      <button class="btn-confirmar" id="btn-confirmar" onclick="confirmarVenta(${total})" disabled>Confirmar venta</button>
+      <button class="btn-cancelar" onclick="cerrarModal()">Cancelar</button>
+    </div>
+  `
+}
+
+function selMetodo(metodoNombre, total) {
+  strategySeleccionada = PAYMENT_STRATEGIES[metodoNombre]
+  document.querySelectorAll('.metodo-btn').forEach(b => b.classList.remove('sel'))
+  document.getElementById('m-' + metodoNombre).classList.add('sel')
+
+  const extra = document.getElementById('extra-section')
+  document.getElementById('error-section').innerHTML = ''
+
+  if (strategySeleccionada.requiereInput()) {
+    extra.innerHTML = `
+      <div class="efectivo-box">
+        <label>Efectivo recibido</label>
+        <input type="number" id="input-recibido" placeholder="${total}" oninput="validarPago(${total})" min="${total}"/>
+      </div>
+      <div class="vuelto-box" id="vuelto-box" style="display:none">
+        <div class="vuelto-lbl">Vuelto a devolver</div>
+        <div class="vuelto-amt" id="vuelto-amt">$0</div>
+      </div>
+    `
+    document.getElementById('btn-confirmar').disabled = true
+  } else {
+    extra.innerHTML = ''
+    document.getElementById('btn-confirmar').disabled = false
+    document.getElementById('btn-confirmar').textContent = 'Confirmar venta'
+  }
+}
+
+function validarPago(total) {
+  const datos = { recibido: document.getElementById('input-recibido').value }
+  const resultado = strategySeleccionada.validar(total, datos)
+  const btnConf   = document.getElementById('btn-confirmar')
+  const vueltoBox = document.getElementById('vuelto-box')
+  const errorBox  = document.getElementById('error-section')
+
+  if (resultado.ok) {
+    const { vuelto } = strategySeleccionada.procesar(total, datos)
+    document.getElementById('vuelto-amt').textContent = fmtPrecio(vuelto)
+    vueltoBox.style.display = 'block'
+    errorBox.innerHTML = ''
+    btnConf.disabled = false
+    btnConf.textContent = vuelto > 0 ? `Confirmar · Vuelto ${fmtPrecio(vuelto)}` : 'Confirmar venta'
+  } else {
+    vueltoBox.style.display = 'none'
+    btnConf.disabled = true
+    btnConf.textContent = 'Confirmar venta'
+    errorBox.innerHTML = `<div class="error-box">${resultado.error}</div>`
+  }
+}
+
+function confirmarVenta(total) {
+  const datos = strategySeleccionada.requiereInput()
+    ? { recibido: document.getElementById('input-recibido').value }
+    : {}
+  const resultado = strategySeleccionada.procesar(total, datos)
+
+  cart.items.forEach(item => {
+    const prod = stockActual.find(p => p.id === item.id)
+    if (prod) prod.stock -= item.qty
+  })
+
+  caja.registrarVenta(resultado.metodo, total)
+
+  historial.unshift({
+    hora: new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }),
+    items: cart.items.map(i => ({ ...i })),
+    itemsTexto: cart.items.map(i => i.nombre + ' ×' + i.qty).join(', '),
+    metodo: resultado.metodo,
+    total
+  })
+
+  const itemsVendidos = cart.items.map(i => i.nombre + ' ×' + i.qty).join(', ')
+
+  document.getElementById('modal-content').innerHTML = `
+    <div class="venta-ok">
+      <div class="check">✦</div>
+      <h3>Venta registrada</h3>
+      <p>${itemsVendidos}</p>
+      <p style="font-size:18px;color:var(--gold);font-weight:800;margin-bottom:8px">${fmtPrecio(total)}</p>
+      <p>Método: ${resultado.metodo}${resultado.vuelto > 0 ? ' · Vuelto: ' + fmtPrecio(resultado.vuelto) : ''}</p>
+      <button class="btn-confirmar" style="margin-top:16px;max-width:220px;margin-left:auto;margin-right:auto" onclick="cerrarModal()">Cerrar</button>
+    </div>
+  `
+
+  cart.limpiar()
+  renderProductos()
+  renderHistorial()
+}
+
+function cerrarModal() { document.getElementById('modal').style.display = 'none' }
+
+function onCajaStateChange() {
+  const badge     = document.getElementById('caja-badge')
+  const badgeText = document.getElementById('caja-badge-text')
+  const msg       = document.getElementById('caja-cerrada-msg')
+  const grid      = document.getElementById('grid-productos')
+  const btnAbrir  = document.getElementById('btn-abrir-caja')
+  const btnCerrar = document.getElementById('btn-cerrar-caja')
+
+  if (caja.puedeVender()) {
+    badge.className = 'caja-status abierta'
+    badgeText.textContent = 'Caja abierta'
+    msg.style.display = 'none'
+    grid.style.display = 'grid'
+    btnAbrir.style.display = 'none'
+    btnCerrar.style.display = 'block'
+  } else {
+    badge.className = 'caja-status cerrada'
+    badgeText.textContent = 'Caja cerrada'
+    msg.style.display = 'block'
+    grid.style.display = 'none'
+    btnAbrir.style.display = 'block'
+    btnCerrar.style.display = 'none'
+  }
+  renderProductos()
+  renderCarrito()
+}
+
+function abrirCajaModal() {
+  document.getElementById('modal-content').innerHTML = `
+    <h3>Abrir caja</h3>
+    <p class="subtotal">Ingresa el monto base con el que arranca la caja.</p>
+    <div class="efectivo-box">
+      <label>Monto base (COP)</label>
+      <input type="number" id="input-monto-base" placeholder="100000" min="0">
+    </div>
+    <div class="modal-btns">
+      <button class="btn-confirmar" onclick="confirmarAbrirCaja()">Abrir caja</button>
+      <button class="btn-cancelar" onclick="cerrarModal()">Cancelar</button>
+    </div>
+  `
+  document.getElementById('modal').style.display = 'flex'
+}
+function confirmarAbrirCaja() {
+  const monto = Number(document.getElementById('input-monto-base').value) || 0
+  caja.abrir(monto)
+  cerrarModal()
+}
+function cerrarCajaModal() {
+  const totalVentas = caja.totalVentas()
+  const filas = Object.entries(caja.ventasPorMetodo).map(([metodo, monto]) => `
+      <div class="resumen-row"><span>${PAYMENT_STRATEGIES[metodo].icono()} ${metodo}</span><span>${fmtPrecio(monto)}</span></div>
+    `).join('')
+  document.getElementById('modal-content').innerHTML = `
+    <h3>Cerrar caja</h3>
+    <p class="subtotal">Resumen del turno antes de cerrar.</p>
+    <div class="resumen-caja">
+      <div class="resumen-row"><span>Monto base</span><span>${fmtPrecio(caja.montoBase)}</span></div>
+      ${filas}
+      <div class="resumen-row total"><span>Total en caja</span><span>${fmtPrecio(caja.montoBase + totalVentas)}</span></div>
+    </div>
+    <div class="modal-btns">
+      <button class="btn-confirmar" onclick="confirmarCerrarCaja()">Confirmar cierre</button>
+      <button class="btn-cancelar" onclick="cerrarModal()">Cancelar</button>
+    </div>
+  `
+  document.getElementById('modal').style.display = 'flex'
+}
+function confirmarCerrarCaja() { caja.cerrar(); cerrarModal() }
+
+function toggleHistorial() {
+  const el = document.getElementById('historial')
+  el.style.display = el.style.display === 'none' ? 'block' : 'none'
+  renderHistorial()
+}
+function renderHistorial() {
+  const el = document.getElementById('historial-items')
+  if (historial.length === 0) { el.innerHTML = '<div class="empty-state">Sin ventas registradas hoy</div>'; return }
+  el.innerHTML = historial.map(v => `
+    <div class="historial-item">
+      <span class="h-hora">${v.hora}</span>
+      <span class="h-items">${v.itemsTexto}</span>
+      <span class="h-metodo">${v.metodo}</span>
+      <span class="h-total">${fmtPrecio(v.total)}</span>
+    </div>
+  `).join('')
+}
+
+/* ANÁLISIS DE VENTAS DIARIAS */
+function renderAnalytics() {
+  const totalVentas  = historial.reduce((s, v) => s + v.total, 0)
+  const totalCosto   = historial.reduce((s, v) => s + v.items.reduce((a, i) => {
+    const prod = stockActual.find(p => p.id === i.id)
+    return a + (prod ? prod.costo * i.qty : 0)
+  }, 0), 0)
+  const gananciaNeta = totalVentas - totalCosto
+  const margen       = totalVentas > 0 ? Math.round(gananciaNeta / totalVentas * 100) : 0
+  const numT         = historial.length
+  const ticketProm   = numT > 0 ? Math.round(totalVentas / numT) : 0
+  const unidades     = historial.reduce((s, v) => s + v.items.reduce((a, i) => a + i.qty, 0), 0)
+
+  document.getElementById('stats-grid').innerHTML = `
+    <div class="stat-card"><div class="stat-label">Ventas brutas hoy</div><div class="stat-value">${fmtPrecio(totalVentas)}</div><div class="stat-sub">${numT} transacciones</div></div>
+    <div class="stat-card"><div class="stat-label">Ganancia neta</div><div class="stat-value">${fmtPrecio(gananciaNeta)}</div><div class="stat-sub">Margen del ${margen}%</div></div>
+    <div class="stat-card"><div class="stat-label">Ticket promedio</div><div class="stat-value alt">${fmtPrecio(ticketProm)}</div><div class="stat-sub">por transacción</div></div>
+    <div class="stat-card"><div class="stat-label">Unidades vendidas</div><div class="stat-value alt">${unidades}</div><div class="stat-sub">artículos en total</div></div>
+  `
+
+  const ventasPorProducto = {}
+  historial.forEach(v => v.items.forEach(i => {
+    if (!ventasPorProducto[i.id]) ventasPorProducto[i.id] = { nombre: i.nombre, emoji: i.emoji, qty: 0, total: 0 }
+    ventasPorProducto[i.id].qty += i.qty
+    ventasPorProducto[i.id].total += i.precio * i.qty
+  }))
+  const top = Object.values(ventasPorProducto).sort((a, b) => b.qty - a.qty).slice(0, 6)
+  const maxQty = top.length > 0 ? top[0].qty : 1
+  const topEl = document.getElementById('top-productos')
+  if (top.length === 0) {
+    topEl.innerHTML = '<div class="empty-state">Aún no hay ventas registradas hoy</div>'
+  } else {
+    topEl.innerHTML = top.map(p => `
+      <div class="bar-row">
+        <div class="bar-row-label"><span>${p.emoji} ${p.nombre} · ${p.qty} uds</span><span>${fmtPrecio(p.total)}</span></div>
+        <div class="bar-track"><div class="bar-fill" style="width:${Math.round(p.qty / maxQty * 100)}%"></div></div>
+      </div>
+    `).join('')
+  }
+
+  const metEl = document.getElementById('ventas-metodo')
+  const metodosConVentas = Object.entries(caja.ventasPorMetodo).filter(([, v]) => v > 0)
+  if (metodosConVentas.length === 0) {
+    metEl.innerHTML = '<div class="empty-state">Sin pagos registrados hoy</div>'
+  } else {
+    metEl.innerHTML = metodosConVentas.map(([metodo, monto]) => `
+      <div class="metodo-row">
+        <div class="left"><span class="metodo-ico-sm">${PAYMENT_STRATEGIES[metodo].icono()}</span>${metodo}</div>
+        <span style="color:var(--gold);font-weight:700">${fmtPrecio(monto)}</span>
+      </div>
+    `).join('')
+  }
+}
+
+/* GESTIÓN DE INVENTARIO — CRUD */
+function renderInventario() {
+  const tbody = document.getElementById('inv-tbody')
+  tbody.innerHTML = stockActual.map(p => {
+    let pillClass = 'ok', pillText = 'Disponible'
+    if (p.stock <= 0) { pillClass = 'agotado'; pillText = 'Agotado' }
+    else if (p.stock <= 5) { pillClass = 'bajo'; pillText = 'Stock bajo' }
+    return `
+      <tr>
+        <td>
+          <div class="inv-emoji-name">
+            <span class="em">${p.emoji}</span>
+            <div><div class="nm">${p.nombre}</div><div class="cat">${p.categoria}</div></div>
+          </div>
+        </td>
+        <td style="color:var(--gold);font-weight:700">${fmtPrecio(p.precio)}</td>
+        <td><div class="stock-edit"><input type="number" value="${p.stock}" min="0" onchange="actualizarStock(${p.id}, this.value)"></div></td>
+        <td><span class="stock-pill ${pillClass}">${pillText}</span></td>
+        <td style="text-align:right">
+          <div style="display:flex;gap:6px;justify-content:flex-end">
+            <button class="icon-btn" onclick="editarProducto(${p.id})" title="Editar">✎</button>
+            <button class="icon-btn danger" onclick="eliminarProducto(${p.id})" title="Eliminar">✕</button>
+          </div>
+        </td>
+      </tr>
+    `
+  }).join('')
+}
+
+function actualizarStock(id, valor) {
+  const prod = stockActual.find(p => p.id === id)
+  if (!prod) return
+  prod.stock = Math.max(0, Number(valor) || 0)
+  renderInventario()
+  renderProductos()
+}
+
+function abrirNuevoProducto() {
+  document.getElementById('modal-content').innerHTML = formularioProductoHTML()
+  document.getElementById('modal').style.display = 'flex'
+  bindCategoriaSelect()
+}
+function editarProducto(id) {
+  const prod = stockActual.find(p => p.id === id)
+  if (!prod) return
+  document.getElementById('modal-content').innerHTML = formularioProductoHTML(prod)
+  document.getElementById('modal').style.display = 'flex'
+  bindCategoriaSelect()
+}
+
+function bindCategoriaSelect() {
+  const sel = document.getElementById('f-categoria')
+  if (!sel) return
+  sel.addEventListener('change', function() {
+    document.getElementById('f-nueva-cat-wrap').style.display = this.value === '__nueva__' ? 'block' : 'none'
+  })
+}
+
+function formularioProductoHTML(prod = null) {
+  const categorias = [...new Set(stockActual.map(p => p.categoria))]
+  const esEdicion = prod !== null
+  return `
+    <h3>${esEdicion ? 'Editar producto' : 'Nuevo producto'}</h3>
+    <p class="subtotal">${esEdicion ? 'Actualiza los datos del producto.' : 'Agrega un producto al catálogo.'}</p>
+
+    <div class="form-row">
+      <div class="form-field"><label>Emoji</label><input type="text" id="f-emoji" value="${prod ? prod.emoji : '🍺'}" maxlength="4"></div>
+      <div class="form-field">
+        <label>Categoría</label>
+        <select id="f-categoria">
+          ${categorias.map(c => `<option ${prod && prod.categoria === c ? 'selected' : ''}>${c}</option>`).join('')}
+          <option value="__nueva__">+ Nueva categoría...</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-field" id="f-nueva-cat-wrap" style="display:none">
+      <label>Nombre de la nueva categoría</label>
+      <input type="text" id="f-nueva-cat" placeholder="Ej: Cocteles">
+    </div>
+
+    <div class="form-field"><label>Nombre del producto</label><input type="text" id="f-nombre" value="${prod ? prod.nombre : ''}" placeholder="Ej: Cerveza Corona 355ml"></div>
+
+    <div class="form-row">
+      <div class="form-field"><label>Precio de venta</label><input type="number" id="f-precio" value="${prod ? prod.precio : ''}" placeholder="3500" min="0"></div>
+      <div class="form-field"><label>Costo unitario</label><input type="number" id="f-costo" value="${prod ? prod.costo : ''}" placeholder="2200" min="0"></div>
+    </div>
+
+    <div class="form-field"><label>Stock inicial</label><input type="number" id="f-stock" value="${prod ? prod.stock : ''}" placeholder="50" min="0"></div>
+
+    <div id="form-error"></div>
+
+    <div class="modal-btns">
+      <button class="btn-confirmar" onclick="guardarProducto(${prod ? prod.id : 'null'})">${esEdicion ? 'Guardar cambios' : 'Crear producto'}</button>
+      <button class="btn-cancelar" onclick="cerrarModal()">Cancelar</button>
+    </div>
+  `
+}
+
+function guardarProducto(id) {
+  const emoji  = document.getElementById('f-emoji').value.trim() || '🛒'
+  const nombre = document.getElementById('f-nombre').value.trim()
+  const precio = Number(document.getElementById('f-precio').value)
+  const costo  = Number(document.getElementById('f-costo').value) || 0
+  const stock  = Number(document.getElementById('f-stock').value) || 0
+  let categoria = document.getElementById('f-categoria').value
+
+  if (categoria === '__nueva__') {
+    categoria = document.getElementById('f-nueva-cat').value.trim()
+    if (!categoria) { mostrarErrorForm('Ingresa el nombre de la nueva categoría'); return }
+  }
+  if (!nombre) { mostrarErrorForm('El nombre del producto es obligatorio'); return }
+  if (!precio || precio <= 0) { mostrarErrorForm('El precio de venta debe ser mayor a 0'); return }
+
+  if (id === null) {
+    stockActual.push({ id: nextId++, nombre, emoji, categoria, precio, costo, stock })
+  } else {
+    const prod = stockActual.find(p => p.id === id)
+    if (prod) { prod.nombre = nombre; prod.emoji = emoji; prod.categoria = categoria; prod.precio = precio; prod.costo = costo; prod.stock = stock }
+  }
+
+  cerrarModal()
+  renderCategorias()
+  renderProductos()
+  renderInventario()
+}
+
+function mostrarErrorForm(msg) {
+  document.getElementById('form-error').innerHTML = `<div class="error-box">${msg}</div>`
+}
+
+function eliminarProducto(id) {
+  const prod = stockActual.find(p => p.id === id)
+  if (!prod) return
+  document.getElementById('modal-content').innerHTML = `
+    <h3>Eliminar producto</h3>
+    <p class="subtotal">¿Seguro que quieres eliminar <strong style="color:var(--text)">${prod.emoji} ${prod.nombre}</strong> del catálogo? Esta acción no se puede deshacer.</p>
+    <div class="modal-btns">
+      <button class="btn-confirmar" style="background:linear-gradient(135deg,#e74c3c,#a83228)" onclick="confirmarEliminar(${id})">Eliminar</button>
+      <button class="btn-cancelar" onclick="cerrarModal()">Cancelar</button>
+    </div>
+  `
+  document.getElementById('modal').style.display = 'flex'
+}
+function confirmarEliminar(id) {
+  stockActual = stockActual.filter(p => p.id !== id)
+  cart.items = cart.items.filter(i => i.id !== id)
+  cart.notify()
+  cerrarModal()
+  renderCategorias()
+  renderProductos()
+  renderInventario()
+}
+
+function fmtPrecio(n) { return '$' + Math.round(n).toLocaleString('es-CO') }
+
+init()
+</script>
+</body>
+</html>
